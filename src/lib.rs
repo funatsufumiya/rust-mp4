@@ -1,5 +1,3 @@
-#![feature(int_to_from_bytes, conservative_impl_trait)]
-
 #[macro_use]
 extern crate log;
 extern crate mp4parse;

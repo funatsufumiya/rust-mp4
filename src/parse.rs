@@ -277,19 +277,61 @@ fn parse_avc_config(data: &[u8]) -> AVCVideoConfigurationRecord {
     }
 }
 
-pub fn parse<F: Read>(mut input_file: F) -> Result<Mp4File, mp4parse::Error> {
-    let mut mp4_media_ctx = mp4parse::MediaContext::new();
-    mp4parse::read_mp4(&mut input_file, &mut mp4_media_ctx).unwrap();
+fn get_sample_entry(track: &mp4parse::Track) -> Option<&mp4parse::SampleEntry> {
+    if track.stsd.as_ref().is_none() || track.stsd.as_ref().unwrap().descriptions.len() == 0 {
+        None
+    } else {
+        Some(&track.stsd.as_ref().unwrap().descriptions[0])
+    }
+}
 
-    let mut video_tracks: Vec<Box<VideoTrack>> = vec![];
+// fn get_video_sample_entry(track: &mp4parse::Track) -> Option<&mp4parse::VideoSampleEntry> {
+//     if track.stsd.is_none() || track.stsd.unwrap().descriptions.len() == 0 {
+//         None
+//     } else {
+//         match track.stsd.as_ref().unwrap().descriptions[0] {
+//             mp4parse::SampleEntry::Video(ref video_sample_entry) => {
+//                 Some(video_sample_entry)
+//             },
+//             _ => None,
+//         }
+//     }
+// }
+
+fn get_codec_type_from_track(track: &mp4parse::Track) -> Option<mp4parse::CodecType> {
+    if track.stsd.as_ref().is_none() || track.stsd.as_ref().unwrap().descriptions.len() == 0 {
+        None
+    } else {
+        match track.stsd.as_ref().unwrap().descriptions[0] {
+            mp4parse::SampleEntry::Video(ref video_sample_entry) => {
+                Some(video_sample_entry.codec_type)
+            },
+            mp4parse::SampleEntry::Audio(ref audio_sample_entry) => {
+                Some(audio_sample_entry.codec_type)
+            },
+            _ => None,
+        }
+    }
+}
+
+pub fn parse<F: Read>(mut input_file: F) -> Result<Mp4File, mp4parse::Error> {
+    let mp4_media_ctx = mp4parse::read_mp4(&mut input_file).unwrap();
+
+    let mut video_tracks: Vec<Box<dyn VideoTrack>> = vec![];
 
     for track in mp4_media_ctx.tracks {
         // println!("stss: {:?}", track.stss);
         // println!("ctts: {:?}", track.ctts);
 
-        if track.codec_type != mp4parse::CodecType::H264 {
-            warn!("暂不支持该类型的媒体资源: {:?}", track.codec_type);
-            continue;
+        if let Some(codec_type) = get_codec_type_from_track(&track) {
+            if codec_type != mp4parse::CodecType::H264 {
+                // || track.codec_type != mp4parse::CodecType::H264 {
+                // cn
+                // warn!("暂不支持该类型的媒体资源: {:?}", codec_type);
+                // en
+                warn!("Unsupported codec type: {:?}", codec_type);
+                continue;
+            }
         }
 
         let mut samples = vec![];
@@ -304,7 +346,7 @@ pub fn parse<F: Read>(mut input_file: F) -> Result<Mp4File, mp4parse::Error> {
 
         // extradata (sequence header)
         // https://stackoverflow.com/questions/24884827/possible-locations-for-sequence-picture-parameter-sets-for-h-264-stream/24890903#24890903
-        let (width, height, extradata) = match track.data {
+        let (width, height, extradata) = match get_sample_entry(&track) {
             Some(mp4parse::SampleEntry::Video(ref video_sample_entry)) => {
                 let width = video_sample_entry.width as u32;
                 let height = video_sample_entry.height as u32;
@@ -344,7 +386,7 @@ pub fn parse<F: Read>(mut input_file: F) -> Result<Mp4File, mp4parse::Error> {
     Ok(Mp4File {
         timescale: mp4_media_ctx.timescale,
         mvex: mp4_media_ctx.mvex,
-        psshs: mp4_media_ctx.psshs,
+        psshs: mp4_media_ctx.psshs.into_iter().collect(),
         video_tracks: video_tracks,
     })
 }
