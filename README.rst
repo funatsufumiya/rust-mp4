@@ -3,8 +3,6 @@ MP4
 
 Chinese Version README: `README_cn.rst <README_cn.rst>`_
 
-:Date: 09/16 2018
-
 .. contents::
 
 Running Example
