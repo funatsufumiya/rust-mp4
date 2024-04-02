@@ -66,7 +66,10 @@ impl<'a> Iterator for Chunks<'a> {
 
                         sample_to_chunk.samples[self.stsc_sample_index].samples_per_chunk as usize
                     },
-                    None => panic!("Sample to Chunk 至少需要包含一条指示信息。"),
+                    // cn
+                    // None => panic!("Sample to Chunk 至少需要包含一条指示信息。"),
+                    // en
+                    None => panic!("Sample to Chunk must contain at least one indication."),
                 };
 
                 assert_eq!(samples_per_chunk > 0, true);
@@ -79,7 +82,10 @@ impl<'a> Iterator for Chunks<'a> {
                 if let Some(ref stsz) = self.track.stsz {
                     if stsz.sample_size == 0 {
                         if self.sample_index >= stsz.sample_sizes.len() {
-                            warn!("部分样本遭到遗弃 ...", );
+                            // cn
+                            // warn!("部分样本遭到遗弃 ...", );
+                            // en
+                            warn!("Some samples are discarded ...", );
                             return None;
                         }
                     }
@@ -126,7 +132,10 @@ impl<'a> Iterator for ChunkSamples<'a> {
         };
 
         if sample_size == 0 {
-            panic!("sample size 必须大于零!");
+            // cn
+            // panic!("sample size 必须大于零!");
+            // en
+            panic!("Sample size must be greater than zero!");
         }
 
         // stts 同步表
@@ -143,7 +152,10 @@ impl<'a> Iterator for ChunkSamples<'a> {
 
             delta
         } else {
-            panic!("时间同步表缺失！");
+            // cn
+            // panic!("时间同步表缺失！");
+            // en
+            panic!("Time-to-sample table is missing!");
         };
 
         // TODO: stss, ctts
