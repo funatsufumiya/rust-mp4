@@ -22,7 +22,7 @@ pub enum VideoCodec {
     // AV1,
 }
 
-pub trait VideoTrack: fmt::Display + fmt::Debug {
+pub trait VideoTrack: fmt::Display + fmt::Debug + Send + Sync {
     fn codec(&self) -> VideoCodec;
     fn width(&self) -> u32;
     fn height(&self) -> u32;
