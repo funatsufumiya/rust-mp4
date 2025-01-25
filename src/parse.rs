@@ -9,6 +9,7 @@ use std::ptr;
 use std::fmt;
 use std::fs::{ self, OpenOptions, };
 use std::io::{ Read, Write, Seek, SeekFrom };
+use std::sync::{Arc, Mutex};
 
 
 pub struct Chunks<'a> {
@@ -196,7 +197,7 @@ pub struct Mp4File {
     pub mvex: Option<mp4parse::MovieExtendsBox>,
     pub psshs: Vec<mp4parse::ProtectionSystemSpecificHeaderBox>,
     // pub tracks: Vec<Mp4Track>,
-    pub video_tracks: Vec<Box<VideoTrack>>,
+    pub video_tracks: Vec<Arc<Mutex<Box<VideoTrack>>>>,
     // pub audio_tracks: Vec<Box<AudioTrack>>,
 }
 
@@ -222,8 +223,12 @@ impl fmt::Debug for Mp4File {
         writeln!(f, "Psshs: {:?} ", self.psshs);
         writeln!(f, "Tracks:");
         
-        for track in &self.video_tracks {
-            writeln!(f, "{}", track);
+        for track_ in &self.video_tracks {
+            let track = track_.lock().unwrap();
+            let err_or_not = writeln!(f, "{}", track);
+            if err_or_not.is_err() {
+                return err_or_not;
+            }
         }
 
         Ok(())
@@ -329,7 +334,7 @@ fn get_codec_type_from_track(track: &mp4parse::Track) -> Option<mp4parse::CodecT
 pub fn parse<F: Read>(mut input_file: F) -> Result<Mp4File, mp4parse::Error> {
     let mp4_media_ctx = mp4parse::read_mp4(&mut input_file).unwrap();
 
-    let mut video_tracks: Vec<Box<dyn VideoTrack>> = vec![];
+    let mut video_tracks: Vec<Arc<Mutex<Box<dyn VideoTrack>>>> = vec![];
 
     for track in mp4_media_ctx.tracks {
         // println!("stss: {:?}", track.stss);
@@ -373,13 +378,13 @@ pub fn parse<F: Read>(mut input_file: F) -> Result<Mp4File, mp4parse::Error> {
 
         let avc_config_record = parse_avc_config(&extradata);
         
-        video_tracks.push(Box::new(H264VideoTrack {
+        video_tracks.push(Arc::new(Mutex::new(Box::new(H264VideoTrack {
             id: track.track_id.unwrap(),
             width: width,
             height: height,
             samples: samples,
             avc_config_record: avc_config_record,
-        }));
+        }))));
 
         // tracks.push(Mp4Track {
         //     id: track.id,

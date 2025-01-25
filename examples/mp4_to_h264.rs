@@ -20,7 +20,8 @@ fn main() {
 
     let mp4 = mp4::parse::parse(&mut mp4_input_file).unwrap();
 
-    for video_track in mp4.video_tracks {
+    for video_track_ in mp4.video_tracks {
+        let video_track = video_track_.lock().unwrap();
         if video_track.codec() == VideoCodec::H264 {
             println!("{}", video_track);
             
